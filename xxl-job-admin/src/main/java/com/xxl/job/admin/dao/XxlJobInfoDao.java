@@ -45,5 +45,12 @@ public interface XxlJobInfoDao {
 
 	public int scheduleUpdate(XxlJobInfo xxlJobInfo);
 
+	/**
+	 * 根据描述查询定时任务信息（加锁）
+	 * @param jobGroup
+	 * @param jobDesc
+	 * @return
+	 */
+	public List<XxlJobInfo> getXxlJobInfoByJobDescLock(@Param("jobGroup") int jobGroup,@Param("jobDesc") String jobDesc);
 
 }

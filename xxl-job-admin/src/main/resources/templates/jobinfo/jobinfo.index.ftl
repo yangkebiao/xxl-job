@@ -275,6 +275,15 @@ done-->
 echo "Good bye!"
 exit 0
 </textarea>
+</textarea>
+<textarea class="glueSource_batshell" style="display:none;" >
+@echo off
+
+echo xxl-job: hello batshell
+echo Good bye!
+  
+exit 0
+</textarea>
 <textarea class="glueSource_python" style="display:none;" >
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-

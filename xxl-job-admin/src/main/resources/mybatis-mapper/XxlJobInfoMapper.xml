@@ -236,5 +236,14 @@
 			trigger_status = #{triggerStatus}
 		WHERE id = #{id}
 	</update>
+	
+	<select id="getXxlJobInfoByJobDescLock" resultMap="XxlJobInfo">
+		SELECT <include refid="Base_Column_List" />
+		FROM xxl_job_info AS t
+		WHERE 
+		t.job_group = #{jobGroup}
+		and t.job_desc = #{jobDesc} 
+		for update 
+	</select>
 
 </mapper>

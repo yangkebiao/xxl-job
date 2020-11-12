@@ -18,6 +18,8 @@ import com.xxl.job.core.util.DateUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.text.MessageFormat;
@@ -57,6 +59,7 @@ public class XxlJobServiceImpl implements XxlJobService {
 		return maps;
 	}
 
+	@Transactional(isolation = Isolation.READ_COMMITTED)
 	@Override
 	public ReturnT<String> add(XxlJobInfo jobInfo) {
 
@@ -70,6 +73,11 @@ public class XxlJobServiceImpl implements XxlJobService {
 		}
 		if (jobInfo.getAuthor()==null || jobInfo.getAuthor().trim().length()==0) {
 			return new ReturnT<String>(ReturnT.FAIL_CODE, (I18nUtil.getString("system_please_input")+I18nUtil.getString("jobinfo_field_author")) );
+		}
+		
+		List<XxlJobInfo> xxlJobInfoByJobDescLock = xxlJobInfoDao.getXxlJobInfoByJobDescLock(group.getId(),jobInfo.getJobDesc());
+		if(xxlJobInfoByJobDescLock.size() > 0) {
+			return new ReturnT<String>(ReturnT.FAIL_CODE, I18nUtil.getString("jobinfo_field_jobdesc_only"));
 		}
 
 		// valid trigger
@@ -165,6 +173,7 @@ public class XxlJobServiceImpl implements XxlJobService {
 		}
 	}
 
+	@Transactional(isolation = Isolation.READ_COMMITTED)
 	@Override
 	public ReturnT<String> update(XxlJobInfo jobInfo) {
 
@@ -240,6 +249,14 @@ public class XxlJobServiceImpl implements XxlJobService {
 		XxlJobGroup jobGroup = xxlJobGroupDao.load(jobInfo.getJobGroup());
 		if (jobGroup == null) {
 			return new ReturnT<String>(ReturnT.FAIL_CODE, (I18nUtil.getString("jobinfo_field_jobgroup")+I18nUtil.getString("system_unvalid")) );
+		}
+		
+		List<XxlJobInfo> xxlJobInfoByJobDescLock = xxlJobInfoDao.getXxlJobInfoByJobDescLock(jobGroup.getId(),jobInfo.getJobDesc());
+		if(xxlJobInfoByJobDescLock.size() > 1) {
+			return new ReturnT<String>(ReturnT.FAIL_CODE, I18nUtil.getString("jobinfo_field_jobdesc_only"));
+		}else if(xxlJobInfoByJobDescLock.size() == 1 && 
+				(xxlJobInfoByJobDescLock.get(0).getId() != jobInfo.getId())) {
+			return new ReturnT<String>(ReturnT.FAIL_CODE, I18nUtil.getString("jobinfo_field_jobdesc_only"));
 		}
 
 		// stage job info

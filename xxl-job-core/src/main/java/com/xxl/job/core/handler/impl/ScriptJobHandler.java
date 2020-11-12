@@ -78,8 +78,13 @@ public class ScriptJobHandler extends IJobHandler {
 
         // invoke
         XxlJobHelper.log("----------- script file:"+ scriptFileName +" -----------");
-        int exitValue = ScriptUtil.execToFile(cmd, scriptFileName, logFileName, scriptParams);
-
+        int exitValue = 0;
+        if(glueType == GlueTypeEnum.GLUE_BATSHELL) {
+        	exitValue = ScriptUtil.execToFile2(cmd,"/c", scriptFileName, logFileName, scriptParams);
+        }else {
+        	exitValue = ScriptUtil.execToFile(cmd, scriptFileName, logFileName, scriptParams);
+        }
+        
         if (exitValue == 0) {
             XxlJobHelper.handleSuccess();
             return;

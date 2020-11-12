@@ -128,6 +128,99 @@ public class ScriptUtil {
             }
         }
     }
+    
+    
+    /**
+     * 脚本执行，日志文件实时输出
+     *
+     * @param command
+     * @param command param
+     * @param scriptFile
+     * @param logFile
+     * @param params
+     * @return
+     * @throws IOException
+     */
+    public static int execToFile2(String command,String commandParam, String scriptFile, String logFile, String... params) throws IOException {
+    	
+    	FileOutputStream fileOutputStream = null;
+    	Thread inputThread = null;
+    	Thread errThread = null;
+    	try {
+    		// file
+    		fileOutputStream = new FileOutputStream(logFile, true);
+    		
+    		// command
+    		List<String> cmdarray = new ArrayList<>();
+    		cmdarray.add(command);
+    		if(commandParam != null) {
+    			cmdarray.add(commandParam);
+    		}
+    		cmdarray.add(scriptFile);
+    		if (params!=null && params.length>0) {
+    			for (String param:params) {
+    				cmdarray.add(param);
+    			}
+    		}
+    		String[] cmdarrayFinal = cmdarray.toArray(new String[cmdarray.size()]);
+    		
+    		// process-exec
+    		final Process process = Runtime.getRuntime().exec(cmdarrayFinal);
+    		
+    		// log-thread
+    		final FileOutputStream finalFileOutputStream = fileOutputStream;
+    		inputThread = new Thread(new Runnable() {
+    			@Override
+    			public void run() {
+    				try {
+    					copy(process.getInputStream(), finalFileOutputStream, new byte[1024]);
+    				} catch (IOException e) {
+    					XxlJobHelper.log(e);
+    				}
+    			}
+    		});
+    		errThread = new Thread(new Runnable() {
+    			@Override
+    			public void run() {
+    				try {
+    					copy(process.getErrorStream(), finalFileOutputStream, new byte[1024]);
+    				} catch (IOException e) {
+    					XxlJobHelper.log(e);
+    				}
+    			}
+    		});
+    		inputThread.start();
+    		errThread.start();
+    		
+    		// process-wait
+    		int exitValue = process.waitFor();      // exit code: 0=success, 1=error
+    		
+    		// log-thread join
+    		inputThread.join();
+    		errThread.join();
+    		
+    		return exitValue;
+    	} catch (Exception e) {
+    		XxlJobHelper.log(e);
+    		return -1;
+    	} finally {
+    		if (fileOutputStream != null) {
+    			try {
+    				fileOutputStream.close();
+    			} catch (IOException e) {
+    				XxlJobHelper.log(e);
+    			}
+    			
+    		}
+    		if (inputThread != null && inputThread.isAlive()) {
+    			inputThread.interrupt();
+    		}
+    		if (errThread != null && errThread.isAlive()) {
+    			errThread.interrupt();
+    		}
+    	}
+    }
+
 
     /**
      * 数据流Copy（Input自动关闭，Output不处理）

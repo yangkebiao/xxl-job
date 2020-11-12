@@ -1,19 +1,31 @@
 package com.xxl.job.executor.service.jobhandler;
 
-import com.xxl.job.core.context.XxlJobHelper;
-import com.xxl.job.core.handler.annotation.XxlJob;
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxl.job.core.context.XxlJobHelper;
+import com.xxl.job.core.handler.annotation.XxlJob;
 
 /**
  * XxlJob开发示例（Bean模式）
@@ -116,7 +128,128 @@ public class SampleXxlJob {
 
     }
 
+    /**
+     * 3、新命令行任务
+     */
+    @XxlJob("newCommandJobHandler") 
+    public void newCommandJobHandler(String param) throws Exception {
+    	ObjectMapper objectMapper = new ObjectMapper();
+    	objectMapper.configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true);  
+    	
+    	Map<String,Object> readValue = objectMapper.readValue(param, Map.class);
+    	
+    	String cmd = (String)readValue.get("cmd");
+    	Map<String,String> env = (Map)readValue.get("env");
+    	String dir = (String)readValue.get("dir");
+    	int exitValue = cmdExce(cmd, env, dir);
+    	
+    	if (exitValue == 0) {
+            // default success
+        } else {
+            XxlJobHelper.handleFail("command exit value("+exitValue+") is failed");
+        }
+    	
+    }
+    private int cmdExce(String cmd,Map<String, String> env,String dir) {
+		
+		Process pop = null;
+		int waitFor = -1;
+		try {
+			XxlJobHelper.log("执行cmd："+cmd);
+			
+			List<String> envArr = new ArrayList<>();
+			Map<String, String> sysEnv = System.getenv();
+			if(env != null && !env.isEmpty()) {
+				sysEnv.putAll(env);
+			}
+			Set<Entry<String, String>> entrySet = sysEnv.entrySet();
+			for (Entry<String, String> entry : entrySet) {
+				String e = entry.getKey()+"="+entry.getValue();
+//				log.info(e);
+				envArr.add(e);
+			}
+			pop = Runtime.getRuntime().exec(cmd, envArr.toArray(new String[envArr.size()]),dir != null?new File(dir):null);
+			
+			//获取进程的标准输入流  
+			final InputStream is1 = pop.getInputStream();  
+			//获取进程的错误流  
+			final InputStream is2 = pop.getErrorStream(); 
+			
+			XxlJobHelper.log("执行cmd响应："); 
+			
+			new Thread(new Runnable() {
+				
+				@Override
+				public void run() {
+					 
+					BufferedReader br1 = null;
+					try {
+						br1 = new BufferedReader(new InputStreamReader(is1,"UTF-8"));
+					} catch (UnsupportedEncodingException e1) {
+						throw new RuntimeException(e1);
+					}  
+			         try {  
+			            String line1 = null;  
+			            while ((line1 = br1.readLine()) != null) {  
+			                  if (line1 != null){
+			                	  XxlJobHelper.log("cmd info result："+line1);
+			                  }  
+			              }  
+			        } catch (IOException e) {  
+			             e.printStackTrace();  
+			        } finally{  
+			             try {  
+			               is1.close();  
+			             } catch (IOException e) {  
+			                e.printStackTrace();  
+			            }  
+			          }  
+				}
+			}).start();
+			
+			new Thread(new Runnable() {
+				
+				@Override
+				public void run() {
+					
+					BufferedReader br2 = null;
+					try {
+						br2 = new BufferedReader(new InputStreamReader(is2,"UTF-8"));
+					} catch (UnsupportedEncodingException e1) {
+						throw new RuntimeException(e1);
+					}  
+			         try {  
+			            String line2 = null;  
+			            while ((line2 = br2.readLine()) != null) {  
+			                  if (line2 != null){
+			                	  XxlJobHelper.log("cmd error result："+line2);
+			                  }  
+			              }  
+			        } catch (IOException e) {  
+			             e.printStackTrace();  
+			        } finally{  
+			             try {  
+			               is2.close();  
+			             } catch (IOException e) {  
+			                e.printStackTrace();  
+			            }  
+			          }  
+				}
+			}).start();
 
+           waitFor = pop.waitFor();
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }finally {
+        	if(pop!=null) {
+        		pop.destroy();
+        	}
+		}
+		return waitFor;
+		
+	}
+    
+    
     /**
      * 4、跨平台Http任务
      *  参数示例：

@@ -2,6 +2,9 @@ package com.xxl.job.admin.controller;
 
 import com.xxl.job.admin.controller.annotation.PermissionLimit;
 import com.xxl.job.admin.core.conf.XxlJobAdminConfig;
+import com.xxl.job.admin.core.model.XxlJobInfo;
+import com.xxl.job.admin.service.CustomerAdminBiz;
+import com.xxl.job.admin.service.impl.dto.TaskInfo;
 import com.xxl.job.core.biz.AdminBiz;
 import com.xxl.job.core.biz.model.HandleCallbackParam;
 import com.xxl.job.core.biz.model.RegistryParam;
@@ -26,7 +29,7 @@ import java.util.List;
 public class JobApiController {
 
     @Resource
-    private AdminBiz adminBiz;
+    private CustomerAdminBiz customerAdminBiz;
 
     /**
      * api
@@ -38,7 +41,7 @@ public class JobApiController {
     @RequestMapping("/{uri}")
     @ResponseBody
     @PermissionLimit(limit=false)
-    public ReturnT<String> api(HttpServletRequest request, @PathVariable("uri") String uri, @RequestBody(required = false) String data) {
+    public ReturnT<? extends Object> api(HttpServletRequest request, @PathVariable("uri") String uri, @RequestBody(required = false) String data) {
 
         // valid
         if (!"POST".equalsIgnoreCase(request.getMethod())) {
@@ -54,18 +57,48 @@ public class JobApiController {
         }
 
         // services mapping
-        if ("callback".equals(uri)) {
+        if ("callback".equals(uri)) {//执行器回调
             List<HandleCallbackParam> callbackParamList = GsonTool.fromJson(data, List.class, HandleCallbackParam.class);
-            return adminBiz.callback(callbackParamList);
-        } else if ("registry".equals(uri)) {
+            return customerAdminBiz.callback(callbackParamList);
+        } else if ("registry".equals(uri)) {//执行器注册
             RegistryParam registryParam = GsonTool.fromJson(data, RegistryParam.class);
-            return adminBiz.registry(registryParam);
-        } else if ("registryRemove".equals(uri)) {
+            return customerAdminBiz.registry(registryParam);
+        } else if ("registryRemove".equals(uri)) {//执行器移除
             RegistryParam registryParam = GsonTool.fromJson(data, RegistryParam.class);
-            return adminBiz.registryRemove(registryParam);
+            return customerAdminBiz.registryRemove(registryParam);
+        } else if ("jobGroupList".equals(uri)) {//获取执行器列表
+            return customerAdminBiz.getXxlJobGroupList();
+        }else if ("getJobInfo".equals(uri)) {//查询任务
+        	TaskInfo param = GsonTool.fromJson(data, TaskInfo.class);
+            return customerAdminBiz.getXxlJobInfo(param);
+        }else if ("getJobInfoList".equals(uri)) {//模糊查询任务
+        	TaskInfo param = GsonTool.fromJson(data, TaskInfo.class);
+            return customerAdminBiz.getXxlJobInfoList(param);
+        }else if ("addJobInfo".equals(uri)) {//创建任务
+        	XxlJobInfo param = GsonTool.fromJson(data, XxlJobInfo.class);
+            return customerAdminBiz.addXxlJobInfo(param);
+        } else if ("updateJobInfo".equals(uri)) {//更新任务
+        	XxlJobInfo param = GsonTool.fromJson(data, XxlJobInfo.class);
+            return customerAdminBiz.updateXxlJobInfo(param);
+        } else if ("removeJobInfo".equals(uri)) {//删除任务
+        	TaskInfo param = GsonTool.fromJson(data, TaskInfo.class);
+            return customerAdminBiz.removeXxlJobInfo(param);
+        } else if ("startJobInfo".equals(uri)) {//开始任务
+        	TaskInfo param = GsonTool.fromJson(data, TaskInfo.class);
+            return customerAdminBiz.startXxlJobInfo(param);
+        } else if ("stopJobInfo".equals(uri)) {//停止任务
+        	TaskInfo param = GsonTool.fromJson(data, TaskInfo.class);
+            return customerAdminBiz.stopXxlJobInfo(param);
+        } else if ("triggerJob".equals(uri)) {//立即执行一次任务
+        	TaskInfo param = GsonTool.fromJson(data, TaskInfo.class);
+            return customerAdminBiz.triggerJob(param);
+        } else if ("cronNextTriggerTime".equals(uri)) {//获取最近5次调度时间
+        	TaskInfo param = GsonTool.fromJson(data, TaskInfo.class);
+            return customerAdminBiz.nextTriggerTime(param);
         } else {
             return new ReturnT<String>(ReturnT.FAIL_CODE, "invalid request, uri-mapping("+ uri +") not found.");
         }
+
 
     }
 
