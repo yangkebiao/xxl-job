@@ -7,6 +7,7 @@ import com.xxl.job.core.context.XxlJobContext;
 import com.xxl.job.core.context.XxlJobHelper;
 import com.xxl.job.core.executor.XxlJobExecutor;
 import com.xxl.job.core.handler.IJobHandler;
+import com.xxl.job.core.handler.impl.SyncMethodJobHandler;
 import com.xxl.job.core.log.XxlJobFileAppender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,14 +134,20 @@ public class JobThread extends Thread{
 						// limit timeout
 						Thread futureThread = null;
 						try {
+							final TriggerParam triggerParamTmp = triggerParam;
 							FutureTask<Boolean> futureTask = new FutureTask<Boolean>(new Callable<Boolean>() {
 								@Override
 								public Boolean call() throws Exception {
 
 									// init job context
 									XxlJobContext.setXxlJobContext(xxlJobContext);
-
-									handler.execute();
+									
+									if(handler instanceof SyncMethodJobHandler) {
+										SyncMethodJobHandler synHandler = ((SyncMethodJobHandler)handler);
+										synHandler.execute(triggerParamTmp);
+									}else {
+										handler.execute();
+									}
 									return true;
 								}
 							});
@@ -160,11 +167,16 @@ public class JobThread extends Thread{
 						}
 					} else {
 						// just execute
-						handler.execute();
+						if(handler instanceof SyncMethodJobHandler) {
+							SyncMethodJobHandler synHandler = ((SyncMethodJobHandler)handler);
+							synHandler.execute(triggerParam);
+						}else {
+							handler.execute();
+						}
 					}
 
 					// valid execute handle data
-					if (XxlJobContext.getXxlJobContext().getHandleCode() <= 0) {
+					if (XxlJobContext.getXxlJobContext().getHandleCode() < 0) {
 						XxlJobHelper.handleFail("job handle result lost.");
 					} else {
 						String tempHandleMsg = XxlJobContext.getXxlJobContext().getHandleMsg();

@@ -4,6 +4,8 @@ import com.xxl.job.core.executor.XxlJobExecutor;
 import com.xxl.job.core.glue.GlueFactory;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import com.xxl.job.core.handler.impl.MethodJobHandler;
+import com.xxl.job.core.handler.impl.SyncMethodJobHandler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -151,7 +153,13 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
                 }
 
                 // registry jobhandler
-                registJobHandler(name, new MethodJobHandler(bean, executeMethod, initMethod, destroyMethod));
+                MethodJobHandler jobhandler = null;
+                if(xxlJob.isSync()) {
+                	jobhandler = new SyncMethodJobHandler(bean, executeMethod, initMethod, destroyMethod);
+                }else {
+                	jobhandler = new MethodJobHandler(bean, executeMethod, initMethod, destroyMethod);
+                }
+                registJobHandler(name, jobhandler);
             }
         }
 

@@ -29,7 +29,10 @@ public class CustomerAdminBizClient extends AdminBizClient implements CustomerAd
 	@PostConstruct
     public void init() {
     	
-    	this.addressUrl = xxlJobConfig.getAdminAddresses();
+		String url = xxlJobConfig.getAdminAddresses();
+    	if(url != null) {
+    		this.addressUrl = url.split(",")[0];
+    	}
         this.accessToken = xxlJobConfig.getAccessToken();
 
         // valid

@@ -20,12 +20,18 @@ import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxl.job.core.biz.model.HandleCallbackParam;
+import com.xxl.job.core.biz.model.ReturnT;
+import com.xxl.job.core.biz.model.TriggerParam;
+import com.xxl.job.core.context.XxlJobContext;
 import com.xxl.job.core.context.XxlJobHelper;
 import com.xxl.job.core.handler.annotation.XxlJob;
+import com.xxl.job.executor.service.CustomerAdminBiz;
 
 /**
  * XxlJob开发示例（Bean模式）
@@ -42,6 +48,8 @@ import com.xxl.job.core.handler.annotation.XxlJob;
 public class SampleXxlJob {
     private static Logger logger = LoggerFactory.getLogger(SampleXxlJob.class);
 
+    @Autowired
+    private CustomerAdminBiz customerAdminBiz;
 
     /**
      * 1、简单任务示例（Bean模式）
@@ -380,6 +388,34 @@ public class SampleXxlJob {
     }
     public void destroy(){
         logger.info("destory");
+    }
+    
+    /**
+     * 6.异步调用回调
+     * @param param
+     * @return
+     * @throws Exception
+     */
+    @XxlJob(value = "demoJobHandler3",isSync = true)
+    public void demoJobHandler3(TriggerParam triggerParam) throws Exception {
+    	XxlJobHelper.log("XXL-JOB, Hello World.");
+    	String param = XxlJobHelper.getJobParam();
+        System.out.println("param："+param+",triggerParam:"+triggerParam);
+        new Thread(() -> {
+        	try {
+				TimeUnit.SECONDS.sleep(10);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			List<HandleCallbackParam> callbackParamList = new ArrayList<>();
+			callbackParamList.add(new HandleCallbackParam(triggerParam.getLogId(), triggerParam.getLogDateTime(), 
+					ReturnT.SUCCESS_CODE,null));
+			ReturnT<String> callback = customerAdminBiz.callback(callbackParamList);
+			System.out.println("回调结束："+callback);
+        }).start();
+        
+        boolean handleResult = XxlJobHelper.handleResult(ReturnT.RUNNING_CODE, null);
+        System.out.println("handleResult:"+handleResult+"code1:"+XxlJobContext.getXxlJobContext().getHandleCode());
     }
 
 
